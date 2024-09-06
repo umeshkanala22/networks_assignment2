@@ -48,8 +48,8 @@ int main() {
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(config["server_port"]);
-    inet_pton(AF_INET, config["server_ip"].c_str(), &serverAddress.sin_addr);
+    serverAddress.sin_port = htons(config["server_port"].get<int>());
+    inet_pton(AF_INET, config["server_ip"].get<std::string>().c_str(), &serverAddress.sin_addr);
     connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
 
     // Send offset to server
@@ -57,7 +57,7 @@ int main() {
     send(clientSocket, &offset, sizeof(offset), 0);
 
     // Handle server responses
-    handleServer(clientSocket, config["p"]);
+    handleServer(clientSocket, config["p"].get<int>());
 
     // Close socket
     close(clientSocket);

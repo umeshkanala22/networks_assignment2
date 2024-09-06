@@ -5,16 +5,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <json/json.h>
+#include <arpa/inet.h>
+#include <nlohmann/json.hpp>
 
 // Define constants
 const int BUFFER_SIZE = 1024;
 
 // Function to handle client requests
-void handleClient(int clientSocket, std::string filename, int k, int p) {
+void handleClient(int clientSocket, const std::string& filename, int k, int p) {
     // Open file and read in chunks
     std::ifstream file(filename);
-    std::string fileContents;
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+
     std::string chunk;
     int wordCount = 0;
 
@@ -45,25 +50,50 @@ void handleClient(int clientSocket, std::string filename, int k, int p) {
 
 int main() {
     // Read config file
-    Json::Value config;
+    nlohmann::json config;
     std::ifstream configFile("config.json");
-    configFile >> config;
+    if (configFile.is_open()) {
+        configFile >> config;
+    } else {
+        std::cerr << "Failed to open config file: config.json" << std::endl;
+        return 1;
+    }
 
     // Create socket and bind to port
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0) {
+        std::cerr << "Failed to create socket" << std::endl;
+        return 1;
+    }
+
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(config["server_port"].asInt());
-    bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+    serverAddress.sin_port = htons(config["server_port"].get<int>());
+    if (!inet_aton("127.0.0.1", &serverAddress.sin_addr)) {
+        std::cerr << "Failed to convert IP address" << std::endl;
+        return 1;
+    }
+
+    if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+        std::cerr << "Failed to bind socket" << std::endl;
+        return 1;
+    }
 
     // Listen for incoming connections
-    listen(serverSocket, 3);
+    if (listen(serverSocket, 3) < 0) {
+        std::cerr << "Failed to listen on socket" << std::endl;
+        return 1;
+    }
 
     // Accept client connection
     int clientSocket = accept(serverSocket, NULL, NULL);
+    if (clientSocket < 0) {
+        std::cerr << "Failed to accept client connection" << std::endl;
+        return 1;
+    }
 
     // Handle client requests
-    handleClient(clientSocket, config["filename"].asString(), config["k"].asInt(), config["p"].asInt());
+    handleClient(clientSocket, config["filename"].get<std::string>(), config["k"].get<int>(), config["p"].get<int>());
 
     // Close sockets
     close(clientSocket);
