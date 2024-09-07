@@ -80,6 +80,7 @@ int main() {
     }
 
     // Listen for incoming connections
+    std::cout << "Server listening on port " << config["server_port"].get<int>() << std::endl;
     if (listen(serverSocket, 3) < 0) {
         std::cerr << "Failed to listen on socket" << std::endl;
         return 1;
@@ -94,6 +95,7 @@ int main() {
 
     // Handle client requests
     handleClient(clientSocket, config["filename"].get<std::string>(), config["k"].get<int>(), config["p"].get<int>());
+   std:: cout<<"handeling the client " << clientSocket << std::endl;
 
     // Close sockets
     close(clientSocket);

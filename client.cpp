@@ -7,22 +7,20 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <nlohmann/json.hpp>
+using namespace std;
 
-// Define constants
 const int BUFFER_SIZE = 1024;
 
-// Function to handle server responses
 void handleServer(int serverSocket, int p) {
-    // Receive words from server
-    std::string word;
+    string word;
     int wordCount = 0;
-    std::map<std::string, int> wordFrequency;
+    map<std::string, int> wordFrequency;
     while (true) {
         char buffer[BUFFER_SIZE];
         recv(serverSocket, buffer, BUFFER_SIZE, 0);
-        std::string response(buffer);
+        string response(buffer);
         if (response == "EOF\n") break;
-        std::istringstream wordStream(response);
+        istringstream wordStream(response);
         int wordsReceived = 0;
         while (wordStream >> word) {
             wordFrequency[word]++;
@@ -31,20 +29,17 @@ void handleServer(int serverSocket, int p) {
             if (wordsReceived == p) break;
         }
     }
-
-    // Print word frequency
+    cout<<"I have reached on something"<<endl;
     for (auto& pair : wordFrequency) {
-        std::cout << pair.first << ", " << pair.second << std::endl;
+        cout << pair.first << ", " << pair.second <<endl;
     }
 }
 
 int main() {
-    // Read config file
     nlohmann::json config;
     std::ifstream configFile("config.json");
     configFile >> config;
 
-    // Create socket and connect to server
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
@@ -52,12 +47,14 @@ int main() {
     inet_pton(AF_INET, config["server_ip"].get<std::string>().c_str(), &serverAddress.sin_addr);
     connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
 
-    // Send offset to server
+   
     int offset = 0;
+    cout<<"going to send request"<<endl;
     send(clientSocket, &offset, sizeof(offset), 0);
+    cout<<"sending request"<<endl;
 
-    // Handle server responses
     handleServer(clientSocket, config["p"].get<int>());
+    cout<<"done"<<endl;
 
     // Close socket
     close(clientSocket);
