@@ -6,45 +6,60 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include<vector>
 #include <nlohmann/json.hpp>
+using namespace std;
 
-// Define constants
-const int BUFFER_SIZE = 1024;
+const int BUFFER_SIZE = 2048;
 
-// Function to handle client requests
 void handleClient(int clientSocket, const std::string& filename, int k, int p) {
-    // Open file and read in chunks
-    std::ifstream file(filename);
+    ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
+        cerr << "Failed to open file: " << filename << endl;
         return;
     }
 
-    std::string chunk;
+    string chunk;
     int wordCount = 0;
+    int packetCount = 0;
 
-    // Receive offset from client
     int offset;
     recv(clientSocket, &offset, sizeof(offset), 0);
 
-    // Send words to client in chunks
-    while (std::getline(file, chunk)) {
-        std::istringstream wordStream(chunk);
-        std::string word;
+    vector<string> packet;
+    while (getline(file, chunk)) {
+        istringstream wordStream(chunk);
+        string word;
         int wordsSent = 0;
         while (wordStream >> word) {
             if (wordCount >= offset && wordsSent < k) {
-                send(clientSocket, word.c_str(), word.length(), 0);
-                send(clientSocket, "\n", 1, 0);
+                packet.push_back(word);
                 wordCount++;
                 wordsSent++;
+                if (packet.size() == p) {
+                    // Send packet
+                    string packetData;
+                    for (const auto& w : packet) {
+                        packetData += w + "\n";
+                    }
+                    send(clientSocket, packetData.c_str(), packetData.length(), 0);
+                    packet.clear();
+                    packetCount++;
+                }
             }
             if (wordsSent == k) break;
         }
         if (wordsSent == k) break;
     }
 
-    // Send EOF to indicate end of file
+    if (!packet.empty()) {
+        string packetData;
+        for (const auto& w : packet) {
+            packetData += w + "\n";
+        }
+        send(clientSocket, packetData.c_str(), packetData.length(), 0);
+    }
+
     send(clientSocket, "EOF\n", 4, 0);
 }
 
