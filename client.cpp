@@ -34,7 +34,7 @@ void handleServer(int serverSocket, int p) {
                 break;}
         }
         if(bk==true){
-            break;  // break the loop when p words have been received
+            break;
         }
     }
     cout<<"I have reached on something"<<endl;
@@ -65,6 +65,7 @@ int main() {
     cout<<"done"<<endl;
 
     // Close socket
+    close(clientSocket);
    
 
     return 0;

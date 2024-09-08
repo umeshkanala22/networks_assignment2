@@ -7,7 +7,8 @@ server: server.cpp
 client: client.cpp
 	$(CC) $(CFLAGS) -o client client.cpp
 
-all: server client
+run: server client
+	xterm -e ./server & xterm -e ./client
 
 clean:
 	rm server client
