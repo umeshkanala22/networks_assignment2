@@ -98,8 +98,8 @@ int main() {
    std:: cout<<"handeling the client " << clientSocket << std::endl;
 
     // Close sockets
-    close(clientSocket);
-    close(serverSocket);
+    // close(clientSocket);
+    // close(serverSocket);
 
     return 0;
 }

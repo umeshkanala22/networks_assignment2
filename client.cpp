@@ -12,11 +12,14 @@ using namespace std;
 const int BUFFER_SIZE = 1024;
 
 void handleServer(int serverSocket, int p) {
+    cout<<"enterd the client function"<<endl;
     string word;
     int wordCount = 0;
     map<std::string, int> wordFrequency;
+    bool bk=false;
     while (true) {
         char buffer[BUFFER_SIZE];
+        
         recv(serverSocket, buffer, BUFFER_SIZE, 0);
         string response(buffer);
         if (response == "EOF\n") break;
@@ -26,7 +29,12 @@ void handleServer(int serverSocket, int p) {
             wordFrequency[word]++;
             wordCount++;
             wordsReceived++;
-            if (wordsReceived == p) break;
+            if (wordsReceived == p){ 
+                bk=true;
+                break;}
+        }
+        if(bk==true){
+            break;  // break the loop when p words have been received
         }
     }
     cout<<"I have reached on something"<<endl;
@@ -57,7 +65,7 @@ int main() {
     cout<<"done"<<endl;
 
     // Close socket
-    close(clientSocket);
+   
 
     return 0;
 }
