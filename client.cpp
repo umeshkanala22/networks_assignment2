@@ -11,72 +11,53 @@
 
 using namespace std;
 
-const int BUFFER_SIZE = 2048;
+const int BUFFER_SIZE = 4096;
 
 void handleServer(int serverSocket, int p, int k) {
-    string word;
-    int wordCount = 0;
-    map<string, int> wordFrequency;
-    int total_wordsReceived = 0;
     int offset = 0;
+    map<string, int> wordFrequency;
     bool eofReached = false;
 
     while (!eofReached) {
         send(serverSocket, &offset, sizeof(offset), 0);
-        cout << "sent request with offset " << offset << endl;
+        int numberofwords = 0;
 
-        int packetsReceived = 0;
-        int limit = k / p + 1;
-        if (k % p == 0) {
-            limit = k / p;
-        }
-
-        while (packetsReceived < limit && !eofReached) {
+        while (numberofwords < k && !eofReached) {
             char buffer[BUFFER_SIZE];
             int bytesReceived = recv(serverSocket, buffer, BUFFER_SIZE, 0);
-            buffer[bytesReceived] = '\0'; // Null-terminate the string
+            buffer[bytesReceived] = '\0';
 
-            if (bytesReceived == -1) {
-                cerr << "Error receiving data from server" << endl;
-                eofReached = true;
-                break;
-            }
+            // Remove newline character from packet
+            string packet(buffer);
+            packet.erase(remove(packet.begin(), packet.end(), '\n'), packet.end());
 
-            string response(buffer);
-            if (response == "EOF\n") {
-                cout << "Reached EOF" << endl;
-                eofReached = true;
-                break;
-            }
+            istringstream packetStream(packet);
+            string word;
+            while (getline(packetStream, word, ',')) {
+                // Check for empty words
+                if (word.empty()) {
+                    continue;
+                }
 
-            istringstream wordStream(response);
+                string temp = "EOF";
+                if (word == temp) {
+                    eofReached = true;
+                    cout << "EOF reached" << endl;
+                    break;
+                }
 
-            int wordsReceived = 0;
-            while (wordStream >> word) {
+                cout << "this is the word " << word << " completed" << endl;
+
                 wordFrequency[word]++;
-                wordCount++;
-                wordsReceived++;
-                total_wordsReceived++;
-                cout << "these are the current words received " << wordsReceived << endl;
-                cout << "these are the total words received " << total_wordsReceived << endl;
+                numberofwords++;
             }
-            packetsReceived++;
         }
-        
-        cout<<"out of the first while loop"<<endl;
-
-        
         offset += k;
-        if (eofReached) {
-        cout << "Word Frequency:" << endl;
-        for (auto& pair : wordFrequency) {
-            cout << pair.first << ", " << pair.second << endl;
-        }
-            break;
-        }
     }
-    cout<<"retruning"<<endl;
-    return;
+
+    for (const auto& pair : wordFrequency) {
+        cout << pair.first << ", " << pair.second << endl;
+    }
 }
 
 int main() {
@@ -102,5 +83,4 @@ int main() {
     close(clientSocket);
 
     return 0;
-    
 }

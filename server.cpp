@@ -11,9 +11,9 @@
 
 using namespace std;
 
-const int BUFFER_SIZE = 2048;
+const int BUFFER_SIZE = 4096;
 
-void handleClient(int clientSocket, const string& filename, int k, int p) {
+void handleClient(int clientSocket, const string& filename, int k, int p) { 
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Failed to open file: " << filename << endl;
@@ -33,9 +33,10 @@ void handleClient(int clientSocket, const string& filename, int k, int p) {
 
     int offset;
     int wordCount = 0;
-    while (true) {
+    bool eof = false;
+    while (!eof && wordCount<words.size()) {
         recv(clientSocket, &offset, sizeof(offset), 0);
-        wordCount = offset;
+        wordCount=offset;
         cout << "wordCount: " << wordCount << endl;
 
         int wordsSent = 0;
@@ -48,32 +49,47 @@ void handleClient(int clientSocket, const string& filename, int k, int p) {
             packetWords++;
             if (packetWords == p) {
                 packetWords = 0;
-                string packetData;
-                for (const auto& w : packet) {
-                    packetData += w + "\n";
-                    cout << "sent packet"<<wordCount << endl;
+                string packetData="";
+                packetData=packet[0];
+                for(int i=1;i<packet.size();i++){
+                    packetData+=",";
+                    packetData+=packet[i];
                 }
+
+                if(wordCount == words.size()) {
+                    packetData+=",EOF\n";
+                    send(clientSocket, packetData.c_str(), packetData.length(), 0);
+                    eof = true;
+                    break;
+
+                }
+                packetData+=",\n";
+            
                 send(clientSocket, packetData.c_str(), packetData.length(), 0);
                 packet.clear();
             }
+        }
+        if (wordCount ==words.size()){
+            eof=true;
+
         }
         cout<<"out of first while loop"<<endl;
         if (packetWords != 0) {
             string packetData;
             for (const auto& w : packet) {
-                packetData += w + "\n";
+                packetData +=","+w;
             }
+            packetData+=",EOF\n";
             send(clientSocket, packetData.c_str(), packetData.length(), 0);
             packet.clear();
         }
         
         if (wordCount >= words.size()-1) {
+
             break;
         }
     }
-
-    send(clientSocket, "EOF\n", 4, 0);
-    close(clientSocket);
+    cout<<wordCount<<endl;
 }
 
 int main() {
@@ -126,8 +142,9 @@ int main() {
     std::cout << "Handling client " << clientSocket << std::endl;
 
     // Close sockets
-    close(clientSocket);
     close(serverSocket);
+    close(clientSocket);
+
 
     return 0;
 }
