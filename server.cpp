@@ -6,61 +6,74 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include<vector>
+#include <vector>
 #include <nlohmann/json.hpp>
+
 using namespace std;
 
 const int BUFFER_SIZE = 2048;
 
-void handleClient(int clientSocket, const std::string& filename, int k, int p) {
+void handleClient(int clientSocket, const string& filename, int k, int p) {
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "Failed to open file: " << filename << endl;
         return;
     }
 
+    vector<string> words;
     string chunk;
-    int wordCount = 0;
-    int packetCount = 0;
-
-    int offset;
-    recv(clientSocket, &offset, sizeof(offset), 0);
-
-    vector<string> packet;
     while (getline(file, chunk)) {
         istringstream wordStream(chunk);
         string word;
-        int wordsSent = 0;
         while (wordStream >> word) {
-            if (wordCount >= offset && wordsSent < k) {
-                packet.push_back(word);
-                wordCount++;
-                wordsSent++;
-                if (packet.size() == p) {
-                    // Send packet
-                    string packetData;
-                    for (const auto& w : packet) {
-                        packetData += w + "\n";
-                    }
-                    send(clientSocket, packetData.c_str(), packetData.length(), 0);
-                    packet.clear();
-                    packetCount++;
-                }
-            }
-            if (wordsSent == k) break;
+            words.push_back(word);
         }
-        if (wordsSent == k) break;
     }
+    cout<<words.size()<<endl;
 
-    if (!packet.empty()) {
-        string packetData;
-        for (const auto& w : packet) {
-            packetData += w + "\n";
+    int offset;
+    int wordCount = 0;
+    while (true) {
+        recv(clientSocket, &offset, sizeof(offset), 0);
+        wordCount = offset;
+        cout << "wordCount: " << wordCount << endl;
+
+        int wordsSent = 0;
+        vector<string> packet;
+        int packetWords = 0;
+        while (wordsSent < k && wordCount < words.size()) {
+            packet.push_back(words[wordCount]);
+            wordsSent++;
+            wordCount++;
+            packetWords++;
+            if (packetWords == p) {
+                packetWords = 0;
+                string packetData;
+                for (const auto& w : packet) {
+                    packetData += w + "\n";
+                    cout << "sent packet"<<wordCount << endl;
+                }
+                send(clientSocket, packetData.c_str(), packetData.length(), 0);
+                packet.clear();
+            }
         }
-        send(clientSocket, packetData.c_str(), packetData.length(), 0);
+        cout<<"out of first while loop"<<endl;
+        if (packetWords != 0) {
+            string packetData;
+            for (const auto& w : packet) {
+                packetData += w + "\n";
+            }
+            send(clientSocket, packetData.c_str(), packetData.length(), 0);
+            packet.clear();
+        }
+        
+        if (wordCount >= words.size()-1) {
+            break;
+        }
     }
 
     send(clientSocket, "EOF\n", 4, 0);
+    close(clientSocket);
 }
 
 int main() {
@@ -110,7 +123,7 @@ int main() {
 
     // Handle client requests
     handleClient(clientSocket, config["filename"].get<std::string>(), config["k"].get<int>(), config["p"].get<int>());
-   std:: cout<<"handeling the client " << clientSocket << std::endl;
+    std::cout << "Handling client " << clientSocket << std::endl;
 
     // Close sockets
     close(clientSocket);
